@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+
+#PTT Post - Buy
+import requests
+import re
+import os
+import json
+import time
+import datetime
+from datetime import date, timedelta
+from django.db.models import Q
+from celery import shared_task, task
+import random
+from django.conf import settings
+from PTTLibrary import PTT
+
+
+@task(name='weekly_post_buy')
+def weekly_post_buy():
+
+
+    no_list=[2]
+    srr = random.SystemRandom()
+    no_order = srr.choice(no_list)
+    file_ = open(os.path.join(settings.BASE_DIR, 'app/acc.py'))
+    #file_ = open('acc.py')
+    #with open(file_) as f:
+    data = json.load(file_)
+    ID = data['acc'][no_order]['ID']
+    Password = data['acc'][no_order]['Password']
+
+
+    PTTBot = PTT.Library(
+        ConnectMode = PTT.ConnectMode.WebSocket,
+            #LogLevel = PTT.LogLevel.TRACE, 
+    )
+
+    for x in range(5): 
+        try:
+            PTTBot.login(ID, Password)
+            print('Login successfully')
+        except PTT.Exceptions.LoginError:
+            print('Login failed ' + str(x) + 'times' )
+            time.sleep(1)
+            continue
+        break  
+
+
+    #Post
+    Board = 'MacShop'
+    #Board = 'Test'
+    Content = '\r\n\r\n'.join(
+        [
+
+            '[我想要買] 高價收購 Macbook Pro 或 Macbook Air 故障機 (2013年之後的版本)',
+            '[希望價格] 3000~30000 (視機況及年份而定)',                                                                               
+            '[聯絡方式] 站內信討論',     
+            '[交易方式] 面交，雙北地區都可以',                                        
+            '[備註事項]', 
+            '高價收購各類故障Mackbook',
+            '- 無法開機',
+            '- 電池無法充電',
+            '- 螢幕破裂',
+            '- 外殼損壞',
+            '- 硬碟故障',
+            '歡迎來信討論唷，謝謝',                                      
+                                       
+        ]
+    )
+    PTTBot.post(
+        # 板
+        Board,
+        # 標題
+        '台北 Macbook Pro/Air 故障機',
+        # 內文
+        Content,
+        # 標題分類
+        3,
+        # 簽名檔
+        0
+    )
+    PTTBot.logout()
+
+
